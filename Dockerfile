@@ -28,14 +28,8 @@ RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
 
 RUN mkdir -p /go/src/app
 WORKDIR /go/src/app
-
-
 COPY . /go/src/app
-
-
-RUN make install
-RUN make build
-CMD ["make", "serve"]
+RUN chmod 555 /go/src/app/start_shell.sh
 
 EXPOSE 5001
 EXPOSE 5000

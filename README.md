@@ -122,3 +122,14 @@ Install dependencies and type `NODE_ENV=production make build`. This rule is pro
 
 ## License
 MIT
+
+
+##Docker
+
+```
+ docker build -t go-star .
+
+ docker run -P -p 5001:5001 -p 5000:5000 --name test --rm go-star
+
+ docker stop test
+```

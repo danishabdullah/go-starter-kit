@@ -129,7 +129,7 @@ MIT
 ```
  docker build -t go-star .
 
- docker run -P -p 5001:5001 -p 5000:5000 --name test --rm go-star
+ docker run -v $PWD:/go/src/app -P -p 5001:5001 -p 5000:5000 --name test --rm go-star
 
  docker stop test
 ```

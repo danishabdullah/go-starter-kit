@@ -124,7 +124,7 @@ Install dependencies and type `NODE_ENV=production make build`. This rule is pro
 MIT
 
 
-##Docker
+## Docker
 
 ```
  docker build -t go-star .

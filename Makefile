@@ -53,11 +53,11 @@ $(BINDATA):
 	$(GO_BINDATA) $(BINDATA_FLAGS) -o=$@ server/data/...
 
 lint:
-	@npm run eslint || true
+	@yarn run eslint || true
 	@golint $(GO_FILES) || true
 
 install:
-	@npm install
+	@yarn install
 
 ifdef GLIDE
 	@glide install

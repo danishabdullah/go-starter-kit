@@ -1,11 +1,14 @@
 import { applyMiddleware, createStore as reduxCreateStore } from 'redux';
+import { createLogger } from 'redux-logger';
 import reducers from './reducers';
 
 const middlewares = [];
 
 // Add state logger
 if (process.env.NODE_ENV !== 'production') {
-  middlewares.push(require('redux-logger')());
+  try {
+    middlewares.push(createLogger());
+  } catch (e) {}
 }
 
 export function createStore(state) {

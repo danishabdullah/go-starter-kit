@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/dop251/goja/parser"
 	"go/ast"
 	"math"
 	"math/rand"
 	"reflect"
 	"strconv"
+
+	js_ast "github.com/dop251/goja/ast"
+	"github.com/dop251/goja/parser"
 )
 
 const (
@@ -18,6 +20,7 @@ const (
 
 var (
 	typeCallable = reflect.TypeOf(Callable(nil))
+	typeValue    = reflect.TypeOf((*Value)(nil)).Elem()
 )
 
 type global struct {
@@ -89,8 +92,39 @@ type stackFrame struct {
 	pc       int
 }
 
-func (f stackFrame) position() Position {
+func (f *stackFrame) position() Position {
 	return f.prg.src.Position(f.prg.sourceOffset(f.pc))
+}
+
+func (f *stackFrame) write(b *bytes.Buffer) {
+	if f.prg != nil {
+		if n := f.prg.funcName; n != "" {
+			b.WriteString(n)
+			b.WriteString(" (")
+		}
+		if n := f.prg.src.name; n != "" {
+			b.WriteString(n)
+		} else {
+			b.WriteString("<eval>")
+		}
+		b.WriteByte(':')
+		b.WriteString(f.position().String())
+		b.WriteByte('(')
+		b.WriteString(strconv.Itoa(f.pc))
+		b.WriteByte(')')
+		if f.prg.funcName != "" {
+			b.WriteByte(')')
+		}
+	} else {
+		if f.funcName != "" {
+			b.WriteString(f.funcName)
+			b.WriteString(" (")
+		}
+		b.WriteString("native")
+		if f.funcName != "" {
+			b.WriteByte(')')
+		}
+	}
 }
 
 type Exception struct {
@@ -118,34 +152,7 @@ func (e *Exception) String() string {
 	b.WriteByte('\n')
 	for _, frame := range e.stack {
 		b.WriteString("\tat ")
-		if frame.prg != nil {
-			if n := frame.prg.funcName; n != "" {
-				b.WriteString(n)
-				b.WriteString(" (")
-			}
-			if n := frame.prg.src.name; n != "" {
-				b.WriteString(n)
-			} else {
-				b.WriteString("<eval>")
-			}
-			b.WriteByte(':')
-			b.WriteString(frame.position().String())
-			b.WriteByte('(')
-			b.WriteString(strconv.Itoa(frame.pc))
-			b.WriteByte(')')
-			if frame.prg.funcName != "" {
-				b.WriteByte(')')
-			}
-		} else {
-			if frame.funcName != "" {
-				b.WriteString(frame.funcName)
-				b.WriteString(" (")
-			}
-			b.WriteString("native")
-			if frame.funcName != "" {
-				b.WriteByte(')')
-			}
-		}
+		frame.write(&b)
 		b.WriteByte('\n')
 	}
 	return b.String()
@@ -155,6 +162,14 @@ func (e *Exception) Error() string {
 	if e == nil || e.val == nil {
 		return "<nil>"
 	}
+	if len(e.stack) > 0 && (e.stack[0].prg != nil || e.stack[0].funcName != "") {
+		var b bytes.Buffer
+		b.WriteString(e.val.String())
+		b.WriteString(" at ")
+		e.stack[0].write(&b)
+		return b.String()
+	}
+
 	return e.val.String()
 }
 
@@ -665,8 +680,26 @@ func New() *Runtime {
 // Compile creates an internal representation of the JavaScript code that can be later run using the Runtime.RunProgram()
 // method. This representation is not linked to a runtime in any way and can be run in multiple runtimes (possibly
 // at the same time).
-func Compile(name, src string, strict bool) (p *Program, err error) {
+func Compile(name, src string, strict bool) (*Program, error) {
 	return compile(name, src, strict, false)
+}
+
+// CompileAST creates an internal representation of the JavaScript code that can be later run using the Runtime.RunProgram()
+// method. This representation is not linked to a runtime in any way and can be run in multiple runtimes (possibly
+// at the same time).
+func CompileAST(prg *js_ast.Program, strict bool) (*Program, error) {
+	return compileAST(prg, strict, false)
+}
+
+// MustCompile is like Compile but panics if the code cannot be compiled.
+// It simplifies safe initialization of global variables holding compiled JavaScript code.
+func MustCompile(name, src string, strict bool) *Program {
+	prg, err := Compile(name, src, strict)
+	if err != nil {
+		panic(err)
+	}
+
+	return prg
 }
 
 func compile(name, src string, strict, eval bool) (p *Program, err error) {
@@ -692,6 +725,12 @@ func compile(name, src string, strict, eval bool) (p *Program, err error) {
 		return
 	}
 
+	p, err = compileAST(prg, strict, eval)
+
+	return
+}
+
+func compileAST(prg *js_ast.Program, strict, eval bool) (p *Program, err error) {
 	c := newCompiler()
 	c.scope.strict = strict
 	c.scope.eval = eval
@@ -961,17 +1000,24 @@ func (r *Runtime) wrapReflectFunc(value reflect.Value) func(FunctionCall) Value 
 	return func(call FunctionCall) Value {
 		typ := value.Type()
 		nargs := typ.NumIn()
-		if len(call.Arguments) != nargs {
-			if typ.IsVariadic() {
-				if len(call.Arguments) < nargs-1 {
-					panic(r.newError(r.global.TypeError, "expected at least %d arguments; got %d", nargs-1, len(call.Arguments)))
-				}
-			} else {
-				panic(r.newError(r.global.TypeError, "expected %d argument(s); got %d", nargs, len(call.Arguments)))
-			}
-		}
+		var in []reflect.Value
 
-		in := make([]reflect.Value, len(call.Arguments))
+		if l := len(call.Arguments); l < nargs {
+			// fill missing arguments with zero values
+			n := nargs
+			if typ.IsVariadic() {
+				n--
+			}
+			in = make([]reflect.Value, n)
+			for i := l; i < n; i++ {
+				in[i] = reflect.Zero(typ.In(i))
+			}
+		} else {
+			if l > nargs && !typ.IsVariadic() {
+				l = nargs
+			}
+			in = make([]reflect.Value, l)
+		}
 
 		callSlice := false
 		for i, a := range call.Arguments {
@@ -984,6 +1030,8 @@ func (r *Runtime) wrapReflectFunc(value reflect.Value) func(FunctionCall) Value 
 				}
 
 				t = typ.In(n).Elem()
+			} else if n > nargs-1 { // ignore extra arguments
+				break
 			} else {
 				t = typ.In(n)
 			}
@@ -1083,21 +1131,20 @@ func (r *Runtime) toReflectValue(v Value, typ reflect.Type) (reflect.Value, erro
 		return reflect.ValueOf(uint8(i)).Convert(typ), nil
 	}
 
-	t := reflect.TypeOf(v)
-	if t.AssignableTo(typ) {
-		return reflect.ValueOf(v), nil
-	} else if t.ConvertibleTo(typ) {
-		return reflect.ValueOf(v).Convert(typ), nil
-	}
-
 	if typ == typeCallable {
 		if fn, ok := AssertFunction(v); ok {
 			return reflect.ValueOf(fn), nil
 		}
 	}
 
-	et := v.ExportType()
+	if typ.Implements(typeValue) {
+		return reflect.ValueOf(v), nil
+	}
 
+	et := v.ExportType()
+	if et == nil {
+		return reflect.Zero(typ), nil
+	}
 	if et.AssignableTo(typ) {
 		return reflect.ValueOf(v.Export()), nil
 	} else if et.ConvertibleTo(typ) {
@@ -1230,6 +1277,11 @@ func (r *Runtime) ExportTo(v Value, target interface{}) error {
 	}
 	tval.Elem().Set(vv)
 	return nil
+}
+
+// GlobalObject returns the global object.
+func (r *Runtime) GlobalObject() *Object {
+	return r.globalObject
 }
 
 // Set the specified value as a property of the global object.

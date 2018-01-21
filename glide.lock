@@ -1,5 +1,5 @@
-hash: 589d3fd1ab15d306a78ae118c3e64c287e9f2bb3446e8a58b86ef29d796f8dfa
-updated: 2017-02-20T11:13:26.192169592+05:00
+hash: 7e575e8d8974ce229b2a5aa3e908468b483a5dbdd36d905e392980a3b8d4e481
+updated: 2017-06-15T11:24:56.989567422+05:00
 imports:
 - name: github.com/codegangsta/cli
   version: 347a9884a87374d000eec7e6445a34487c1f4a2b
@@ -10,7 +10,7 @@ imports:
   subpackages:
   - syntax
 - name: github.com/dop251/goja
-  version: 8fa3e12080cd5ea59bef506c70aaacdf4e03ed70
+  version: 09718839f5255969d0dcaef99119b867d187ecea
   subpackages:
   - ast
   - file
@@ -51,7 +51,7 @@ imports:
 - name: github.com/olebedev/config
   version: afea898d27c7d17376ecc60c7c2e73c76b40060e
 - name: github.com/olebedev/gojax
-  version: fe07e4673cbf22aa44c03032ef616ca5d62de4ed
+  version: bb153be84336f26925890502929cc363477df7ad
   subpackages:
   - fetch
   - fetch/internal/data

@@ -7,8 +7,8 @@ build:
         name: install
         code: |
           go version
-          go get github.com/Masterminds/glide
-          glide install
+          curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+          dep ensure
           ls -la $GOPATH/bin
     - script:
         name: build

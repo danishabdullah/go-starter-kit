@@ -1,4 +1,4 @@
-# go-starter-kit [![wercker status](https://app.wercker.com/status/cd5a782c425b1feb06844dcc701e528c/s/master "wercker status")](https://app.wercker.com/project/bykey/cd5a782c425b1feb06844dcc701e528c) [![Join the chat at https://gitter.im/olebedev/go-starter-kit](https://img.shields.io/gitter/room/nwjs/nw.js.svg?maxAge=2592000&style=plastic)](https://gitter.im/olebedev/go-starter-kit?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+# go-starter-kit [![Join the chat at https://gitter.im/olebedev/go-starter-kit](https://img.shields.io/gitter/room/nwjs/nw.js.svg?maxAge=2592000&style=plastic)](https://gitter.im/olebedev/go-starter-kit?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 > This project contains a quick starter kit for **Facebook React** Single Page Apps with **Golang** server side render via goja javascript engine, implemented in pure Golang and also with a set of useful features for rapid development of efficient applications.
 
@@ -29,7 +29,7 @@
 * [node.js](https://nodejs.org/) with [yarn](https://yarnpkg.com)
 * [GNU make](https://www.gnu.org/software/make/)
 
-Note that probably not works at windows.
+Note: The project works fine on windows now. You can't use the make files though without installing gnu tools.
 
 ## Project structure
 
@@ -96,7 +96,7 @@ The client app will be compiled into `server/data/static/build/`.  Then it will 
 Clone the repo:
 
 ```
-$ git clone git@github.com:olebedev/go-starter-kit.git $GOPATH/src/github.com/<username>/<project>
+$ git clone git@github.com:danishabdullah/go-starter-kit.git $GOPATH/src/github.com/<username>/<project>
 $ cd $GOPATH/src/github.com/<username>/<project>
 ```
 
@@ -127,9 +127,8 @@ MIT
 ## Docker
 
 ```
- docker build -t go-star .
+ docker build -t skeleton .
 
- docker run -v $PWD:/go/src/app -P -p 5001:5001 -p 5000:5000 --name test --rm go-star
-
- docker stop test
+ docker run -ti --rm -p 5001:5001 -p 5000:5000 -v "path/to/app:/go/src/app/" --name skeleton skeleton
 ```
+This will drop you into the docker container. You can run ```./start_shell.sh``` or ```make serve``` to start the server. The container will be auto removed when you stop it. This is designed for making development workflows easier. You'll need to modify the docker file for deployment once you build something interesting.   
